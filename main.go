@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 
+	_ "image/jpeg"
+	_ "image/png"
+
 	"github.com/makiuchi-d/gozxing"
 	"github.com/makiuchi-d/gozxing/qrcode"
 	"golang.design/x/clipboard"
@@ -23,8 +26,10 @@ type Options struct {
 func main() {
 	opts := parseArgs()
 
-	if err := clipboard.Init(); err != nil {
-		fail("failed to initialize clipboard", err)
+	if opts.FilePath == "" || opts.Copy {
+		if err := clipboard.Init(); err != nil {
+			fail("failed to initialize clipboard", err)
+		}
 	}
 
 	img, err := loadImage(opts)
@@ -109,10 +114,6 @@ func loadImageFromFile(path string) (image.Image, error) {
 }
 
 func loadImageFromClipboard() (image.Image, error) {
-	if err := clipboard.Init(); err != nil {
-		return nil, fmt.Errorf("failed to initialize clipboard: %w", err)
-	}
-
 	imgBytes := clipboard.Read(clipboard.FmtImage)
 	if len(imgBytes) == 0 {
 		return nil, fmt.Errorf("no image found in clipboard")
@@ -128,9 +129,6 @@ func loadImageFromClipboard() (image.Image, error) {
 
 // Write the given text to the clipboard.
 func writeTextToClipboard(text string) error {
-	if err := clipboard.Init(); err != nil {
-		return fmt.Errorf("failed to initialize clipboard: %w", err)
-	}
 	clipboard.Write(clipboard.FmtText, []byte(text))
 	return nil
 }
