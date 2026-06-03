@@ -29,6 +29,7 @@ Options:
   -c, --copy        Copy decoded text to clipboard
   -f, --file PATH   Read QR code from image file instead of clipboard
   -h, --help        Show help
+  -v, --version     Show version
 ```
 Running `qrclip` without any options will read the QR code from the clipboard and print the decoded text to the console.
 
