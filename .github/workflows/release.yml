@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-amd64
+            runner: ubuntu-latest # cross-compilation for Windows
+            goos: windows
+            goarch: amd64
+            cgo: "0"
+            binary: qrclip.exe
+            archive: windows-amd64.zip
+
+          - name: linux-amd64
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            cgo: "1"
+            binary: qrclip
+            archive: linux-amd64.tar.gz
+
+          - name: macos-arm64
+            runner: macos-15
+            goos: darwin
+            goarch: arm64
+            cgo: "1"
+            binary: qrclip
+            archive: macos-arm64.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev
+
+      - name: Test
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go test ./...
+
+      - name: Build
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -trimpath -ldflags="-s -w -X 'main.appVersion=${{ github.ref_name }}'" -o "${{ matrix.binary }}" .
+
+      - name: Prepare package directory
+        shell: bash
+        run: |
+          mkdir -p "pkg/${{ matrix.name }}"
+          cp "${{ matrix.binary }}" "pkg/${{ matrix.name }}/"
+
+          if [ -f README.md ]; then
+            cp README.md "pkg/${{ matrix.name }}/"
+          fi
+
+          if [ -f LICENSE ]; then
+            cp LICENSE "pkg/${{ matrix.name }}/"
+          fi
+
+          mkdir -p dist
+
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "pkg/${{ matrix.name }}/*" `
+            -DestinationPath "dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}" `
+            -Force
+
+      - name: Package Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          tar -czf "dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}" -C pkg "${{ matrix.name }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}
+          if-no-files-found: error
+
+  upload-release-assets:
+    name: Upload release assets
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Upload assets to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          mapfile -d '' files < <(find artifacts -type f -name "qrclip-*" -print0)
+
+          gh release upload "$TAG_NAME" "${files[@]}" \
+            --repo "$REPO" \
+            --clobber
