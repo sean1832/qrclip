@@ -54,6 +54,11 @@ go build -o qrclip.exe main.go
 > go build -ldflags="-s -w" -o qrclip.exe main.go
 > ```
 
+> To include version information in the binary, use:
+> ```bash
+> go build -ldflags="-s -w -X 'main.appVersion=1.0.0'" -o qrclip.exe main.go
+> ```
+
 ### Linux build dependencies
 
 On Linux, clipboard support may require X11 development libraries.

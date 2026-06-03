@@ -18,13 +18,21 @@ import (
 
 const appName = "qrclip"
 
+var appVersion = "dev" // This is to be replace during build with the actual version ("main.appVersion=1.0.0" for example)
+
 type Options struct {
-	Copy     bool
-	FilePath string
+	Copy        bool
+	FilePath    string
+	ShowVersion bool
 }
 
 func main() {
 	opts := parseArgs()
+
+	if opts.ShowVersion {
+		fmt.Printf("%s\n", appVersion)
+		return
+	}
 
 	if opts.FilePath == "" || opts.Copy {
 		if err := clipboard.Init(); err != nil {
@@ -65,7 +73,12 @@ func parseArgs() Options {
 	fs.StringVar(&opts.FilePath, "f", "", "read QR code from image file")
 	fs.StringVar(&opts.FilePath, "file", "", "read QR code from image file")
 
+	// version
+	fs.BoolVar(&opts.ShowVersion, "v", false, "show version")
+	fs.BoolVar(&opts.ShowVersion, "version", false, "show version")
+
 	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "%s %s\n", appName, appVersion)
 		fmt.Fprintf(fs.Output(), "Usage:\n")
 		fmt.Fprintf(fs.Output(), "  %s [options]\n", appName)
 		fmt.Fprintf(fs.Output(), "\n")
@@ -76,6 +89,7 @@ func parseArgs() Options {
 		fmt.Fprintf(fs.Output(), "  -c, --copy        Copy decoded text to clipboard\n")
 		fmt.Fprintf(fs.Output(), "  -f, --file PATH   Read QR code from image file instead of clipboard\n")
 		fmt.Fprintf(fs.Output(), "  -h, --help        Show help\n")
+		fmt.Fprintf(fs.Output(), "  -v, --version     Show version\n")
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
