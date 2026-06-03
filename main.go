@@ -57,9 +57,7 @@ func main() {
 	fmt.Println(text)
 
 	if opts.Copy {
-		if err := writeTextToClipboard(text); err != nil {
-			fail("failed to copy text to clipboard", err)
-		}
+		clipboard.Write(clipboard.FmtText, []byte(text))
 	}
 }
 
@@ -139,12 +137,6 @@ func loadImageFromClipboard() (image.Image, error) {
 	}
 
 	return img, nil
-}
-
-// Write the given text to the clipboard.
-func writeTextToClipboard(text string) error {
-	clipboard.Write(clipboard.FmtText, []byte(text))
-	return nil
 }
 
 // Decode the QR code from the given image and return the decoded text.
