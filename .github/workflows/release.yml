@@ -89,19 +89,16 @@ jobs:
           mkdir -p dist
 
       - name: Package Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Compress-Archive `
-            -Path "pkg/${{ matrix.name }}/*" `
-            -DestinationPath "dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}" `
-            -Force
-
-      - name: Package Unix
-        if: runner.os != 'Windows'
+        if: matrix.goos == 'windows'
         shell: bash
         run: |
-          tar -czf "dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}" -C pkg "${{ matrix.name }}"
+          cd "pkg/${{ matrix.name }}" && zip -j "../../dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}" *
+
+      - name: Package Unix
+        if: matrix.goos != 'windows'
+        shell: bash
+        run: |
+          tar -czf "dist/qrclip-${{ github.ref_name }}-${{ matrix.archive }}" -C "pkg/${{ matrix.name }}" .
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
